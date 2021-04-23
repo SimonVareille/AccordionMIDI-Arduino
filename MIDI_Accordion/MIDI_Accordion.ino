@@ -100,6 +100,12 @@ void setup()
       Serial.begin(9600);
     #endif
   #endif
+
+  //Disable soft thru so that incoming message are not sent back
+  MIDI.turnThruOff();
+  //Handle incoming midi messages
+  MIDI.setHandleSystemExclusive(systemExclusiveHandler);
+  
   //Digital pins start turned off
   for (int i=0; i<sizeof(left_hand_pins);i++){ 
     pinMode(left_hand_pins[i],OUTPUT);
@@ -144,6 +150,7 @@ int joystick_prev_val = 0;
 
 void loop()
 {
+  MIDI.read();
   #ifdef BMP
     //Read pressure from the BMP_180 and convert it to MIDI expression
     int expression = get_expression(prev_expression);
@@ -201,6 +208,7 @@ void loop()
     scan_pin(right_hand_pins[i], i, RightKeysStatus[i], false);
     scan_pin(left_hand_pins[i%3], i%3, LeftKeysStatus[i%3], true);
   }
+  MIDI.read();
 }
 
 byte reg_values = 0;
@@ -306,4 +314,26 @@ void note_midi(int group, int position, boolean on, boolean left){
     #endif
   }
 
+}
+
+void sendKeyboards() {
+  size_t size = 4;
+  byte data[size] = {0xF0, 0x7D, 0x10, 0xF7};
+  MIDI.sendSysEx(size, data, true);
+}
+
+void systemExclusiveHandler(byte* data, unsigned size) {
+  /* If SysEx message is larger than the allocated buffer size,
+     data is splitted like:
+     first:  0xF0 .... 0xF0
+     midlle: 0xF7 .... 0xF0
+     last:   0xF7 .... 0xF7
+  */
+  if(data[0] == 0xF0){ // Start of a new SysEx message
+    if(data[1] == 0x7D) {// The message is for us
+      if(data[2] == 0x00) { // Remote asks for keyboards
+        sendKeyboards();
+      }
+    }
+  }
 }
