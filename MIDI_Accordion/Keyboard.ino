@@ -30,6 +30,20 @@ class Button
 };
 
 /**
+   Represents a button that does nothing.
+*/
+class NullButton: public Button
+{
+  public:
+    virtual void on()
+    {
+    };
+    virtual void off()
+    {
+    };
+};
+
+/**
    Represents a button that send a note on/off message.
 */
 class NoteButton: public Button
