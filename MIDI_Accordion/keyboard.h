@@ -21,4 +21,129 @@
 #ifndef __KEYBOARD_H__
 #define __KEYBOARD_H__
 
+#include <Arduino.h>
+#include "midi.h"
+
+/**
+   Abstract class to represents a Button.
+*/
+class Button
+{
+  public:
+    virtual ~Button() {};
+    virtual void on() = 0;
+    virtual void off() = 0;
+};
+
+/**
+   Represents a button that does nothing.
+*/
+class NullButton: public Button
+{
+  public:
+    virtual void on()
+    {};
+    virtual void off()
+    {};
+};
+
+/**
+   Represents a button that send a note on/off message.
+*/
+class NoteButton: public Button
+{
+  public:
+    NoteButton(const uint8_t channel, const uint8_t pitch, const uint8_t velocity)
+      : channel(channel), pitch(pitch), velocity(velocity)
+    {};
+    virtual void on();
+    virtual void off();
+  private:
+    uint8_t channel;
+    uint8_t pitch;
+    uint8_t velocity;
+};
+
+/**
+   Represents a button that send a program change message.
+*/
+class ProgramButton: public Button
+{
+  public:
+    ProgramButton(const uint8_t channel, const uint8_t program)
+      : channel(channel), program(program)
+    {};
+    virtual void on();
+    virtual void off();
+  private:
+    uint8_t channel;
+    uint8_t program;
+};
+
+/**
+   Represents a button that send a control change message
+*/
+class ControlButton: public Button
+{
+  public:
+    ControlButton(const uint8_t channel, const uint8_t control, const uint8_t value)
+      : channel(channel), control(control), value(value)
+    {};
+    virtual void on();
+    virtual void off();
+  private:
+    uint8_t channel;
+    uint8_t control;
+    uint8_t value;
+};
+
+/**
+   Union to get the size of the largest Button subclass.
+*/
+union max_button_size {
+  NoteButton s1;
+  ProgramButton s2;
+  ControlButton s3;
+};
+
+/**
+   Class to statically allocate a button, while keeping all the
+   polymorphic gains.
+*/
+class GenericButton
+{
+  public:
+    Button *operator->();
+    Button const *operator->() const;
+    // For placement new or delete
+    Button *get();
+    GenericButton& operator=(const GenericButton &x);
+  private:
+    byte buf[sizeof(union max_button_size)];
+};
+
+/**
+   Right keyboard.
+
+   Represent a right button keyboard of 81 button, as 4 rows of 16 buttons
+   and 1 row of 17 buttons.
+
+   A keyboard is made of GenericButton. A GenericButton holds a Button.
+   To create a button, we use the placement new operator :
+     new(kbd.keyboard[i][j].get()) NoteButton(i, j, i+j);
+   This doesn't allocate memory, but use the memory at kbd.keyboard[i][j].get().
+
+*/
+class RightKeyboard
+{
+  public:
+    RightKeyboard()
+    {};
+    ~RightKeyboard()
+    {};
+    void clear();
+    Button* getButton(int grp, int index);
+    GenericButton keyboard[12][8];
+};
+
 #endif //__KEYBOARD_H__

@@ -21,36 +21,15 @@
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *******************************************************************************/
 
-#include <MIDI.h>
-#include <midi_Defs.h>
-#include <midi_Message.h>
-#include <midi_Namespace.h>
-#include <midi_Settings.h>
-struct MySettings : public midi::DefaultSettings
-{
-  //By default, the Arduino MIDI Library tries to be smart by 
-  //excluding the CC byte if it doesn't change (to save bandwidth).
-  //This is a problem when starting up Serial<->MIDI software
-  //after starting up the Arduino because we miss the first CC byte.
-  //Setting UseRunningStatus to false removes this "feature."
-  //See https://github.com/projectgus/hairless-midiserial/issues/16 for details.
-  static const bool UseRunningStatus = false;
-  // Set MIDI baud rate. MIDI has a default baud rate of 31250,
-  // but we're setting our baud rate higher so that the Serial<->MIDI software 
-  // can properly decode and read outgoing MIDI data on the computer.
-  static const long BaudRate = 115200;
-};
+#include <new>
 
 //#define DEBUG//uncomment this line to print serial messages, comment to send MIDI data
 //#define BLUETOOTH//uncomment this line to send MIDI data via bluetooth instead of USB
 //#define BMP//uncomment this line to use the BMP180 to add dynamics via bellows
 //#define JOYSTICK//uncomment this line to use a joystick as a pitch-bend controller
 
-#ifdef BLUETOOTH
-  MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial1, MIDI, MySettings);
-#else
-  MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial, MIDI, MySettings);
-#endif
+#include "midi.h"
+#include "keyboard.hpp"
 
 char left_hand_pins[] = { 53, 52, 50 };
 // array to store up/down status of left keys
@@ -89,15 +68,19 @@ const char right_notes_midi_numbers[][8] = {
   {92,0,0,0,0,0,0,0}        //22
 };
 
+RightKeyboard right_keyboard;
+
 void setup()
 {
   #ifdef DEBUG
     Serial.begin(9600);
+    while (!Serial);
   #else
     MIDI.begin();
     //If we're sending MIDI over Serial1, open Serial for additional debugging
     #ifdef BLUETOOTH
       Serial.begin(9600);
+      while (!Serial);
     #endif
   #endif
 
