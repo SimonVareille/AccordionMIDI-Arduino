@@ -159,13 +159,13 @@ class GenericButton
    This doesn't allocate memory, but use the memory at kbd.keyboard[i][j].get().
 
 */
-class Right81ButtonKeyboard
+class RightKeyboard
 {
   public:
-    Right81ButtonKeyboard()
+    RightKeyboard()
     {
     };
-    ~Right81ButtonKeyboard()
+    ~RightKeyboard()
     {
     }
     void clear()
