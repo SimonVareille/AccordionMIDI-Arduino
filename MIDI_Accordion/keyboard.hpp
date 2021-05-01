@@ -28,6 +28,21 @@ void NoteButton::off()
 {
   MIDI.sendNoteOff(pitch, velocity, channel);
 }
+static bool NoteButton::isValid(const uint8_t channel, const uint8_t pitch,
+                                const uint8_t velocity)
+{
+  return channel < 16 && pitch < 128 && velocity < 128;
+}
+static void NoteButton::create(Button *place, const uint8_t channel,
+                               const uint8_t pitch, const uint8_t velocity) {
+  if(!isValid(channel, pitch, velocity)) {
+    // A value is bad, skip
+    new(place) NullButton();
+  }
+  else {
+    new(place) NoteButton(channel, pitch, velocity);
+  }
+}
 
 void ProgramButton::on()
 {
@@ -36,6 +51,20 @@ void ProgramButton::on()
 void ProgramButton::off()
 {
 }
+static bool ProgramButton::isValid(const uint8_t channel, const uint8_t program)
+{
+  return channel < 16 && program < 128;
+};
+static void ProgramButton::create(Button *place, const uint8_t channel,
+                                  const uint8_t program) {
+  if(!isValid(channel, program)) {
+    // A value is bad, skip
+    new(place) NullButton();
+  }
+  else {
+    new(place) ProgramButton(channel, program);
+  }
+};
 
 void ControlButton::on()
 {
@@ -43,6 +72,21 @@ void ControlButton::on()
 }
 void ControlButton::off()
 {
+}
+static bool ControlButton::isValid(const uint8_t channel, const uint8_t control,
+                                   const uint8_t value)
+{
+  return channel < 16 && control < 128 && value < 128;
+}
+static void ControlButton::create(Button *place, const uint8_t channel,
+                                  const uint8_t control, const uint8_t value) {
+  if(!isValid(channel, control, value)) {
+    // A value is bad, skip
+    new(place) NullButton();
+  }
+  else {
+    new(place) ControlButton(channel, control, value);
+  }
 }
 
 Button *GenericButton::operator->() {
