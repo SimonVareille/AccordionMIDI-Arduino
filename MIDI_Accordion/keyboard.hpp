@@ -19,6 +19,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *******************************************************************************/
 #include "keyboard.h"
+#include <base64.hpp>
 
 void NoteButton::on()
 {
@@ -28,13 +29,14 @@ void NoteButton::off()
 {
   MIDI.sendNoteOff(pitch, velocity, channel);
 }
-static bool NoteButton::isValid(const uint8_t channel, const uint8_t pitch,
+bool NoteButton::isValid(const uint8_t channel, const uint8_t pitch,
                                 const uint8_t velocity)
 {
   return channel < 16 && pitch < 128 && velocity < 128;
 }
-static void NoteButton::create(Button *place, const uint8_t channel,
-                               const uint8_t pitch, const uint8_t velocity) {
+void NoteButton::create(Button *place, const uint8_t channel,
+                               const uint8_t pitch, const uint8_t velocity)
+{
   if(!isValid(channel, pitch, velocity)) {
     // A value is bad, skip
     new(place) NullButton();
@@ -51,12 +53,13 @@ void ProgramButton::on()
 void ProgramButton::off()
 {
 }
-static bool ProgramButton::isValid(const uint8_t channel, const uint8_t program)
+bool ProgramButton::isValid(const uint8_t channel, const uint8_t program)
 {
   return channel < 16 && program < 128;
 };
-static void ProgramButton::create(Button *place, const uint8_t channel,
-                                  const uint8_t program) {
+void ProgramButton::create(Button *place, const uint8_t channel,
+                                  const uint8_t program)
+{
   if(!isValid(channel, program)) {
     // A value is bad, skip
     new(place) NullButton();
@@ -73,13 +76,14 @@ void ControlButton::on()
 void ControlButton::off()
 {
 }
-static bool ControlButton::isValid(const uint8_t channel, const uint8_t control,
+bool ControlButton::isValid(const uint8_t channel, const uint8_t control,
                                    const uint8_t value)
 {
   return channel < 16 && control < 128 && value < 128;
 }
-static void ControlButton::create(Button *place, const uint8_t channel,
-                                  const uint8_t control, const uint8_t value) {
+void ControlButton::create(Button *place, const uint8_t channel,
+                                  const uint8_t control, const uint8_t value)
+{
   if(!isValid(channel, control, value)) {
     // A value is bad, skip
     new(place) NullButton();
