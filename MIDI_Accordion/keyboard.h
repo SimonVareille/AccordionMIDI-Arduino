@@ -128,6 +128,7 @@ class GenericButton
     Button const *operator->() const;
     // For placement new or delete
     Button *get();
+    Button const *get() const;
     GenericButton& operator=(const GenericButton &x);
   private:
     byte buf[sizeof(union max_button_size)];

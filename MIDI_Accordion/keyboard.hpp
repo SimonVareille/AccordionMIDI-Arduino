@@ -98,6 +98,9 @@ Button const *GenericButton::operator->() const {
 Button *GenericButton::get() {
   return (Button *)buf;
 }
+Button const *GenericButton::get() const {
+  return (Button const *)buf;
+}
 GenericButton& GenericButton::operator=(const GenericButton &x)
 {
   if (&x != this)
