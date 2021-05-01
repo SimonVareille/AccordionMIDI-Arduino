@@ -69,6 +69,7 @@ const char right_notes_midi_numbers[][8] = {
 };
 
 RightKeyboard right_keyboard;
+Keyboard* edited_keyboard = nullptr;
 
 void setup()
 {
@@ -309,14 +310,33 @@ void systemExclusiveHandler(byte* data, unsigned size) {
   /* If SysEx message is larger than the allocated buffer size,
      data is splitted like:
      first:  0xF0 .... 0xF0
-     midlle: 0xF7 .... 0xF0
+     middle: 0xF7 .... 0xF0
      last:   0xF7 .... 0xF7
   */
   if(data[0] == 0xF0){ // Start of a new SysEx message
+    if(edited_keyboard)
+      edited_keyboard->clearEdition();
+    edited_keyboard = nullptr;
     if(data[1] == 0x7D) {// The message is for us
       if(data[2] == 0x00) { // Remote asks for keyboards
         sendKeyboards();
       }
+      else if(data[2] == 0x02) { // Remote sent a keyboard to apply
+        if(data[3] == 0x01) { // RightKeyboard
+          edited_keyboard = &right_keyboard;
+          edited_keyboard->beginNameEdition();
+          data += 4;
+          size -= 4;
+        }
+      }
     }
+  }
+  else if(data[0] == 0xF7) { // Continuation of the previous SysEx
+    data += 1;
+    size -= 1;
+  }
+
+  if(edited_keyboard != nullptr) {
+    edited_keyboard->editFromSysEx(data, size-1);
   }
 }
