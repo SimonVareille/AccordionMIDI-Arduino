@@ -58,6 +58,10 @@ class NoteButton: public Button
     {};
     virtual void on();
     virtual void off();
+    static bool isValid(const uint8_t channel, const uint8_t pitch,
+                        const uint8_t velocity);
+    static void create(Button *place, const uint8_t channel,
+                       const uint8_t pitch, const uint8_t velocity);
   private:
     uint8_t channel;
     uint8_t pitch;
@@ -75,6 +79,9 @@ class ProgramButton: public Button
     {};
     virtual void on();
     virtual void off();
+    static bool isValid(const uint8_t channel, const uint8_t program);
+    static void create(Button *place, const uint8_t channel,
+                       const uint8_t program);
   private:
     uint8_t channel;
     uint8_t program;
@@ -91,6 +98,10 @@ class ControlButton: public Button
     {};
     virtual void on();
     virtual void off();
+    static bool isValid(const uint8_t channel, const uint8_t control,
+                        const uint8_t value);
+    static void create(Button *place, const uint8_t channel,
+                       const uint8_t control, const uint8_t value);
   private:
     uint8_t channel;
     uint8_t control;
