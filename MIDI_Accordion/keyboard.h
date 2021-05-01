@@ -134,6 +134,31 @@ class GenericButton
     byte buf[sizeof(union max_button_size)];
 };
 
+#define MAX_NAME_LENGTH 109
+
+/**
+ * Base class to handle keyboards.
+ * Defines variable used by all keyboard types.
+ */
+class Keyboard
+{
+public:
+  size_t nameFromSysEx(const byte* data, unsigned size);
+  virtual size_t buttonsFromSysEx(const byte* data, unsigned size) = 0;
+  void editFromSysEx(const byte* data, unsigned size);
+  void clearEdition();
+  void beginNameEdition();
+
+  unsigned char name[MAX_NAME_LENGTH];
+
+  static size_t write_pos;
+  static bool read_name;
+  static bool read_buttons;
+  static uint8_t pad;
+  static unsigned char temp_bytes[4];
+  static bool read_junk;
+};
+
 /**
    Right keyboard.
 
@@ -146,7 +171,7 @@ class GenericButton
    This doesn't allocate memory, but use the memory at kbd.keyboard[i][j].get().
 
 */
-class RightKeyboard
+class RightKeyboard: public Keyboard
 {
   public:
     RightKeyboard()
@@ -155,6 +180,7 @@ class RightKeyboard
     {};
     void clear();
     Button* getButton(int grp, int index);
+    virtual size_t buttonsFromSysEx(const byte* data, unsigned size);
     GenericButton keyboard[12][8];
 };
 
