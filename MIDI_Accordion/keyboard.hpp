@@ -279,6 +279,7 @@ size_t RightKeyboard::buttonsFromSysEx(const byte* data, unsigned size) {
       break;
     default:
       new(keyboard[write_pos/8][write_pos%8].get()) NullButton();
+      i += 1;
     }
   }
   if(write_pos == 81) { // End of keyboard
