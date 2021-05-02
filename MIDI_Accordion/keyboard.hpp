@@ -164,7 +164,7 @@ size_t Keyboard::write_pos = 0;
 bool Keyboard::read_name = false;
 bool Keyboard::read_buttons = false;
 uint8_t Keyboard::pad = 0;
-unsigned char Keyboard::temp_bytes[4] = {0,0,0,0};
+unsigned char Keyboard::temp_bytes[5] = {0,0,0,0,0};
 bool Keyboard::read_junk = false;
 void Keyboard::editFromSysEx(const byte* data, unsigned size) {
   if(read_name) {
@@ -253,6 +253,9 @@ Button* RightKeyboard::getButton(int grp, int index)
 {
   return keyboard[grp][index].get();
 }
+uint8_t RightKeyboard::type() {
+  return 0x01;
+}
 size_t RightKeyboard::buttonsFromSysEx(const byte* data, unsigned size) {
   size_t i=0;
   if(pad) {
@@ -322,4 +325,80 @@ size_t RightKeyboard::buttonsFromSysEx(const byte* data, unsigned size) {
     read_buttons = false;
   }
   return i;
+}
+void RightKeyboard::send() {
+  const size_t size = 100;
+  byte data[size] = {0xF0, 0x7D, 0x02};
+  data[3] = type();
+  byte *write = data + 4;
+
+  // Send name
+
+  unsigned char *name = this->name;
+  size_t name_len = strlen((const char*)name);
+  pad = 0;
+  while(name_len)
+  {
+    size_t max_encodable = (size-(write-data)-1)*3/4;
+    size_t send_len = min(name_len, max_encodable);
+    write += encode_base64(name, send_len, write);
+    name += send_len;
+    name_len -= send_len;
+    if(write - data == size) // The buffer is full
+    {
+      MIDI.sendSysEx(size, data, true);
+      pad = 0;
+      write = data;
+    }
+    else if(name_len > 0)
+    {
+      // We didn't sent the whole name, but the buffer isn't full
+      send_len = max(name_len, (size_t)3);
+      encode_base64(name, send_len, temp_bytes);
+      memcpy(write, temp_bytes, size - (write - data));
+      pad =  4 - (size - (write - data));
+      // Now the buffer is full
+      MIDI.sendSysEx(size, data, true);
+      name += send_len;
+      name_len -= send_len;
+      // Write what's remaining
+      memcpy(data, temp_bytes+pad, 4-pad);
+      write = data + 4-pad;
+    }
+  }
+  write[0] = 0x00;
+  write++;
+
+  // Send buttons
+
+  for(size_t i=0; i<81; i++)
+  {
+    uint8_t button_len = keyboard[i/8][i%8]->toBytes(nullptr);
+    size_t remaining = size - (write - data);
+    if(button_len <= remaining)
+    {
+      write += keyboard[i/8][i%8]->toBytes(write);
+      if(button_len == remaining) // The buffer is full
+      {
+        MIDI.sendSysEx(size, data, true);
+        pad = 0;
+        write = data;
+      }
+    }
+    else if(button_len > remaining)
+    {
+      // buffer is not full but button don't fit
+      pad = button_len - remaining;
+      keyboard[i/8][i%8]->toBytes(temp_bytes);
+      memcpy(write, temp_bytes, remaining);
+      // Now the buffer is full
+      MIDI.sendSysEx(size, data, true);
+      // Write what's remaining
+      memcpy(data, temp_bytes+remaining, pad);
+      write = data + pad;
+    }
+  }
+  write[0] = 0xF7;
+  write++;
+  MIDI.sendSysEx(write - data, data, true);
 }

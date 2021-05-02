@@ -150,6 +150,8 @@ class Keyboard
 public:
   size_t nameFromSysEx(const byte* data, unsigned size);
   virtual size_t buttonsFromSysEx(const byte* data, unsigned size) = 0;
+  virtual void send() = 0;
+  virtual uint8_t type() = 0;
   void editFromSysEx(const byte* data, unsigned size);
   void clearEdition();
   void beginNameEdition();
@@ -160,7 +162,7 @@ public:
   static bool read_name;
   static bool read_buttons;
   static uint8_t pad;
-  static unsigned char temp_bytes[4];
+  static unsigned char temp_bytes[5];
   static bool read_junk;
 };
 
@@ -186,6 +188,8 @@ class RightKeyboard: public Keyboard
     void clear();
     Button* getButton(int grp, int index);
     virtual size_t buttonsFromSysEx(const byte* data, unsigned size);
+    virtual uint8_t type();
+    virtual void send();
     GenericButton keyboard[12][8];
 };
 
