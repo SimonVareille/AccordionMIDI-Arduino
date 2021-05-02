@@ -11,7 +11,7 @@
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
-   
+
  This program is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -33,7 +33,7 @@
 
 char left_hand_pins[] = { 53, 52, 50 };
 // array to store up/down status of left keys
-int LeftKeysStatus[] = {  
+int LeftKeysStatus[] = {
   B0000000,
   B0000000,
   B0000000
@@ -49,7 +49,7 @@ const char left_notes_midi_numbers[][8] = {
 
 char right_hand_pins[] = { 23, 25, 27, 26, 24, 22 };
 // array to store up/down status of right keys
-int RightKeysStatus[] = {  
+int RightKeysStatus[] = {
   B0000000,
   B0000000,
   B0000000,
@@ -89,13 +89,13 @@ void setup()
   MIDI.turnThruOff();
   //Handle incoming midi messages
   MIDI.setHandleSystemExclusive(systemExclusiveHandler);
-  
+
   //Digital pins start turned off
-  for (int i=0; i<sizeof(left_hand_pins);i++){ 
+  for (int i=0; i<sizeof(left_hand_pins);i++){
     pinMode(left_hand_pins[i],OUTPUT);
     digitalWrite(left_hand_pins[i], LOW);
   }
-  for (int i=0; i<sizeof(right_hand_pins);i++){ 
+  for (int i=0; i<sizeof(right_hand_pins);i++){
     pinMode(right_hand_pins[i],OUTPUT);
     digitalWrite(right_hand_pins[i], LOW);
   }
@@ -138,11 +138,11 @@ void loop()
   #ifdef BMP
     //Read pressure from the BMP_180 and convert it to MIDI expression
     int expression = get_expression(prev_expression);
-    
+
     //Ignore it if it didn't change
     if(expression != prev_expression) {
       expression_avg[e] = expression;
-      //Only send MIDI CC every bmp_sample_rate times, 
+      //Only send MIDI CC every bmp_sample_rate times,
       //but send the average of the last bmp_sample_rate deltas
       if (e == bmp_sample_rate - 1){
         expression = 0;
@@ -150,7 +150,7 @@ void loop()
           expression += expression_avg[i];
         }
         expression = expression/bmp_sample_rate;
-        
+
         #ifdef DEBUG
           Serial.print("Expression Change: ");
           Serial.println(expression);
@@ -186,9 +186,9 @@ void loop()
     }
   #endif
 
-  //Alternate between scanning the left and right hand pins 
+  //Alternate between scanning the left and right hand pins
   //to reduce necessary delay between reads
-  for (int i=0; i<6;i++){ 
+  for (int i=0; i<6;i++){
     scan_pin(right_hand_pins[i], i, RightKeysStatus[i], false);
     scan_pin(left_hand_pins[i%3], i%3, LeftKeysStatus[i%3], true);
   }
@@ -213,11 +213,11 @@ void scan_pin(int pin, int index, byte PinStatus, bool left) {
   digitalWrite(pin, LOW);
 
   //check if something changed
-  if (reg_values != PinStatus){ 
+  if (reg_values != PinStatus){
     //if the byte value is greater, we're turning the note on; else, turning it off.
     if (reg_values > PinStatus){
       //using bit-wise OR to send modified bits only
-      check_key(reg_values ^ PinStatus, index, true, left); 
+      check_key(reg_values ^ PinStatus, index, true, left);
     }
     else {
       check_key(reg_values ^ PinStatus, index, false, left);
@@ -236,7 +236,7 @@ void check_key(int reg, int group, boolean on, boolean left){
       }
     }
   }
-  else if (reg & 0x0F) { 
+  else if (reg & 0x0F) {
     for(int i=0; i<4; i++){
       if ((reg >> i) & 1){
         note_midi(group, i, on, left);
@@ -301,9 +301,7 @@ void note_midi(int group, int position, boolean on, boolean left){
 }
 
 void sendKeyboards() {
-  size_t size = 4;
-  byte data[size] = {0xF0, 0x7D, 0x10, 0xF7};
-  MIDI.sendSysEx(size, data, true);
+  right_keyboard.send();
 }
 
 void systemExclusiveHandler(byte* data, unsigned size) {
