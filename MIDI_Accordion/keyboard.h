@@ -33,6 +33,7 @@ class Button
     virtual ~Button() {};
     virtual void on() = 0;
     virtual void off() = 0;
+    virtual uint8_t toBytes(byte *buf) = 0;
 };
 
 /**
@@ -45,6 +46,7 @@ class NullButton: public Button
     {};
     virtual void off()
     {};
+    virtual uint8_t toBytes(byte *buf);
 };
 
 /**
@@ -58,6 +60,7 @@ class NoteButton: public Button
     {};
     virtual void on();
     virtual void off();
+    virtual uint8_t toBytes(byte *buf);
     static bool isValid(const uint8_t channel, const uint8_t pitch,
                         const uint8_t velocity);
     static void create(Button *place, const uint8_t channel,
@@ -79,6 +82,7 @@ class ProgramButton: public Button
     {};
     virtual void on();
     virtual void off();
+    virtual uint8_t toBytes(byte *buf);
     static bool isValid(const uint8_t channel, const uint8_t program);
     static void create(Button *place, const uint8_t channel,
                        const uint8_t program);
@@ -98,6 +102,7 @@ class ControlButton: public Button
     {};
     virtual void on();
     virtual void off();
+    virtual uint8_t toBytes(byte *buf);
     static bool isValid(const uint8_t channel, const uint8_t control,
                         const uint8_t value);
     static void create(Button *place, const uint8_t channel,

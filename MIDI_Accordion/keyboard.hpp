@@ -21,6 +21,13 @@
 #include "keyboard.h"
 #include <base64.hpp>
 
+uint8_t NullButton::toBytes(byte *buf)
+{
+  if(buf)
+    buf[0] = 0x00;
+  return 1;
+}
+
 void NoteButton::on()
 {
   MIDI.sendNoteOn(pitch, velocity, channel);
@@ -28,6 +35,16 @@ void NoteButton::on()
 void NoteButton::off()
 {
   MIDI.sendNoteOff(pitch, velocity, channel);
+}
+uint8_t NoteButton::toBytes(byte *buf)
+{
+  if(buf) {
+    buf[0] = 0x01;
+    buf[1] = channel;
+    buf[2] = pitch;
+    buf[3] = velocity;
+  }
+  return 4;
 }
 bool NoteButton::isValid(const uint8_t channel, const uint8_t pitch,
                                 const uint8_t velocity)
@@ -53,6 +70,15 @@ void ProgramButton::on()
 void ProgramButton::off()
 {
 }
+uint8_t ProgramButton::toBytes(byte *buf)
+{
+  if(buf) {
+    buf[0] = 0x02;
+    buf[1] = channel;
+    buf[2] = program;
+  }
+  return 3;
+}
 bool ProgramButton::isValid(const uint8_t channel, const uint8_t program)
 {
   return channel < 16 && program < 128;
@@ -75,6 +101,16 @@ void ControlButton::on()
 }
 void ControlButton::off()
 {
+}
+uint8_t ControlButton::toBytes(byte *buf)
+{
+  if(buf) {
+    buf[0] = 0x03;
+    buf[1] = channel;
+    buf[2] = control;
+    buf[3] = value;
+  }
+  return 4;
 }
 bool ControlButton::isValid(const uint8_t channel, const uint8_t control,
                                    const uint8_t value)
