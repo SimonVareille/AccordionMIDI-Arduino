@@ -337,7 +337,7 @@ void RightKeyboard::send() {
   unsigned char *name = this->name;
   size_t name_len = strlen((const char*)name);
   pad = 0;
-  while(name_len)
+  while(name_len > 0)
   {
     size_t max_encodable = (size-(write-data)-1)*3/4;
     size_t send_len = min(name_len, max_encodable);
