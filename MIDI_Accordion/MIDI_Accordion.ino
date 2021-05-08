@@ -304,16 +304,10 @@ void note_midi(int group, int position, boolean on, boolean left){
 
 void apply_default_right_keyboard() {
   byte temp[100];
-  size_t i=0;
   for(size_t i=0; i<sizeof(right_keyboard_default); i+=100){
-    memcpy_P(temp, right_keyboard_default+i, 100);
-    systemExclusiveHandler(temp, 100);
-  }
-  if(sizeof(right_keyboard_default) % 100 != 0){
-    i -= 100;
-    memcpy_P(temp, right_keyboard_default+i,
-             sizeof(right_keyboard_default) % 100);
-    systemExclusiveHandler(temp, sizeof(right_keyboard_default) % 100);
+    size_t size = min(100, sizeof(right_keyboard_default)-i);
+    memcpy_P(temp, right_keyboard_default+i, size);
+    systemExclusiveHandler(temp, size);
   }
 }
 
