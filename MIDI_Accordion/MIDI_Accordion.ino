@@ -311,7 +311,20 @@ void apply_default_right_keyboard() {
   }
 }
 
+void send_default_right_keyboard() {
+  byte temp[100];
+  memcpy_P(temp, right_keyboard_default, 99);
+  temp[2] = 0x01; // From storage
+  MIDI.sendSysEx(99, temp, true);
+  for(size_t i=101; i<sizeof(right_keyboard_default); i+=100){
+    size_t size = min(98, sizeof(right_keyboard_default)-i);
+    memcpy_P(temp, right_keyboard_default+i, size);
+    MIDI.sendSysEx(size, temp, true);
+  }
+}
+
 void sendKeyboards() {
+  send_default_right_keyboard();
   right_keyboard.send();
 }
 
