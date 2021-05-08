@@ -100,6 +100,8 @@ void setup()
     digitalWrite(right_hand_pins[i], LOW);
   }
 
+  apply_default_right_keyboard();
+
   DDRL = B00000000;  // PortL (42-49) as input (for left hand)
   PORTL = B11111111; // turn on pullup resistors
 
@@ -300,6 +302,21 @@ void note_midi(int group, int position, boolean on, boolean left){
 
 }
 
+void apply_default_right_keyboard() {
+  byte temp[100];
+  size_t i=0;
+  for(size_t i=0; i<sizeof(right_keyboard_default); i+=100){
+    memcpy_P(temp, right_keyboard_default+i, 100);
+    systemExclusiveHandler(temp, 100);
+  }
+  if(sizeof(right_keyboard_default) % 100 != 0){
+    i -= 100;
+    memcpy_P(temp, right_keyboard_default+i,
+             sizeof(right_keyboard_default) % 100);
+    systemExclusiveHandler(temp, sizeof(right_keyboard_default) % 100);
+  }
+}
+
 void sendKeyboards() {
   right_keyboard.send();
 }
@@ -311,6 +328,7 @@ void systemExclusiveHandler(byte* data, unsigned size) {
      middle: 0xF7 .... 0xF0
      last:   0xF7 .... 0xF7
   */
+  
   if(data[0] == 0xF0){ // Start of a new SysEx message
     if(edited_keyboard)
       edited_keyboard->clearEdition();
