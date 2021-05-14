@@ -43,4 +43,6 @@ struct MySettings : public midi::DefaultSettings
   MIDI_CREATE_CUSTOM_INSTANCE(HardwareSerial, Serial, MIDI, MySettings);
 #endif
 
+const byte sysExDialog[] = {0x7d, 0x0F};
+
 #endif //__MIDI_H__

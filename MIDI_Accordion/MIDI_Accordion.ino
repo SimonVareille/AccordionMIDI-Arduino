@@ -73,6 +73,8 @@ Keyboard* edited_keyboard = nullptr;
 
 void setup()
 {
+  //Handle incoming midi messages
+  MIDI.setHandleSystemExclusive(systemExclusiveHandler);
   #ifdef DEBUG
     Serial.begin(9600);
     while (!Serial);
@@ -87,8 +89,6 @@ void setup()
 
   //Disable soft thru so that incoming message are not sent back
   MIDI.turnThruOff();
-  //Handle incoming midi messages
-  MIDI.setHandleSystemExclusive(systemExclusiveHandler);
 
   //Digital pins start turned off
   for (int i=0; i<sizeof(left_hand_pins);i++){
@@ -134,67 +134,72 @@ int e = 0;
 
 int joystick_prev_val = 0;
 
+bool receivingSysEx = false;
+
 void loop()
 {
   MIDI.read();
-  #ifdef BMP
-    //Read pressure from the BMP_180 and convert it to MIDI expression
-    int expression = get_expression(prev_expression);
-
-    //Ignore it if it didn't change
-    if(expression != prev_expression) {
-      expression_avg[e] = expression;
-      //Only send MIDI CC every bmp_sample_rate times,
-      //but send the average of the last bmp_sample_rate deltas
-      if (e == bmp_sample_rate - 1){
-        expression = 0;
-        for (int i=0; i<bmp_sample_rate; i++){
-          expression += expression_avg[i];
+  // When receiving a long SysEx, disabling the main loop so that we don't miss
+  // parts of the SysEx
+  if(!receivingSysEx) {
+    #ifdef BMP
+      //Read pressure from the BMP_180 and convert it to MIDI expression
+      int expression = get_expression(prev_expression);
+  
+      //Ignore it if it didn't change
+      if(expression != prev_expression) {
+        expression_avg[e] = expression;
+        //Only send MIDI CC every bmp_sample_rate times,
+        //but send the average of the last bmp_sample_rate deltas
+        if (e == bmp_sample_rate - 1){
+          expression = 0;
+          for (int i=0; i<bmp_sample_rate; i++){
+            expression += expression_avg[i];
+          }
+          expression = expression/bmp_sample_rate;
+  
+          #ifdef DEBUG
+            Serial.print("Expression Change: ");
+            Serial.println(expression);
+          #else
+            MIDI.sendControlChange(CC_Expression,expression,1);
+            //Don't let bass overpower melody
+            MIDI.sendControlChange(CC_Expression,constrain(expression-6,0,127),2);
+            //Don't let chords overpower melody
+            MIDI.sendControlChange(CC_Expression,constrain(expression-12,0,127),3);
+          #endif
+          prev_expression = expression;
+          e = 0;
         }
-        expression = expression/bmp_sample_rate;
-
+        else {
+          e = e + 1;
+        }
+      }
+    #endif
+  
+    #ifdef JOYSTICK
+      int pitch_bend_val = scan_joystick();
+      if(pitch_bend_val != joystick_prev_val) {
         #ifdef DEBUG
-          Serial.print("Expression Change: ");
-          Serial.println(expression);
+          Serial.print("Pitch Bend Change: ");
+          Serial.println(pitch_bend_val);
         #else
-          MIDI.sendControlChange(CC_Expression,expression,1);
-          //Don't let bass overpower melody
-          MIDI.sendControlChange(CC_Expression,constrain(expression-6,0,127),2);
-          //Don't let chords overpower melody
-          MIDI.sendControlChange(CC_Expression,constrain(expression-12,0,127),3);
+          //Comment and uncomment to select which channels you want pitch bend to affect.
+          MIDI.sendPitchBend(pitch_bend_val, 1);
+          //MIDI.sendPitchBend(pitch_bend_val, 2);
+          //MIDI.sendPitchBend(pitch_bend_val, 3);
+          joystick_prev_val = pitch_bend_val;
         #endif
-        prev_expression = expression;
-        e = 0;
       }
-      else {
-        e = e + 1;
-      }
+    #endif
+  
+    //Alternate between scanning the left and right hand pins
+    //to reduce necessary delay between reads
+    for (int i=0; i<6;i++){
+      scan_pin(right_hand_pins[i], i, RightKeysStatus[i], false);
+      scan_pin(left_hand_pins[i%3], i%3, LeftKeysStatus[i%3], true);
     }
-  #endif
-
-  #ifdef JOYSTICK
-    int pitch_bend_val = scan_joystick();
-    if(pitch_bend_val != joystick_prev_val) {
-      #ifdef DEBUG
-        Serial.print("Pitch Bend Change: ");
-        Serial.println(pitch_bend_val);
-      #else
-        //Comment and uncomment to select which channels you want pitch bend to affect.
-        MIDI.sendPitchBend(pitch_bend_val, 1);
-        //MIDI.sendPitchBend(pitch_bend_val, 2);
-        //MIDI.sendPitchBend(pitch_bend_val, 3);
-        joystick_prev_val = pitch_bend_val;
-      #endif
-    }
-  #endif
-
-  //Alternate between scanning the left and right hand pins
-  //to reduce necessary delay between reads
-  for (int i=0; i<6;i++){
-    scan_pin(right_hand_pins[i], i, RightKeysStatus[i], false);
-    scan_pin(left_hand_pins[i%3], i%3, LeftKeysStatus[i%3], true);
   }
-  MIDI.read();
 }
 
 byte reg_values = 0;
@@ -335,13 +340,17 @@ void systemExclusiveHandler(byte* data, unsigned size) {
      middle: 0xF7 .... 0xF0
      last:   0xF7 .... 0xF7
   */
-  
   if(data[0] == 0xF0){ // Start of a new SysEx message
     if(edited_keyboard)
       edited_keyboard->clearEdition();
     edited_keyboard = nullptr;
     if(data[1] == 0x7D) {// The message is for us
-      if(data[2] == 0x00) { // Remote asks for keyboards
+      if(data[2] == 0x0F) {// We will receive a long SysEx
+        receivingSysEx = true;
+        MIDI.sendSysEx(sizeof(sysExDialog), sysExDialog, false);
+        return;
+      }
+      else if(data[2] == 0x00) { // Remote asks for keyboards
         sendKeyboards();
       }
       else if(data[2] == 0x02) { // Remote sent a keyboard to apply
@@ -357,6 +366,10 @@ void systemExclusiveHandler(byte* data, unsigned size) {
   else if(data[0] == 0xF7) { // Continuation of the previous SysEx
     data += 1;
     size -= 1;
+  }
+
+  if(data[size-1] == 0xF7) { // End of SysEx
+    receivingSysEx = false;
   }
 
   if(edited_keyboard != nullptr) {
