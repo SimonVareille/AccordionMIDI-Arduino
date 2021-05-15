@@ -1,7 +1,7 @@
 /*******************************************************************************
   Accordion MIDI - Arduino
   https://github.com/SimonVareille/AccordionMIDI-Arduino
-  Copyright � 2021 Simon Vareille
+  Copyright © 2021 Simon Vareille
 
   Based on projects byBrendan Vavra 2016-2017, Dimon Yegorenkov 2011 and Jason Bugeja 2014
  *******************************************************************************
