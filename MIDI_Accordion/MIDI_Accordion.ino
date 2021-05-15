@@ -202,8 +202,9 @@ void loop()
       //TODO - I wonder if we can replace this with direct port write for
       // even better performance?
       digitalWrite(pin, HIGH);
-      byte right_reg_value = ~PINA;
-      byte left_reg_value = ~PINC;
+      // pin value = 1 if pressed, 0 if not
+      byte right_reg_value = PINA;
+      byte left_reg_value = PINC;
       digitalWrite(pin, LOW);
       digitalWrite(pin+1 == 50 ? 38 : pin+1, HIGH);
       scan_pins(right_keyboard, group, right_reg_value,
@@ -215,7 +216,7 @@ void loop()
 void scan_pins(Keyboard &keyboard, int group, byte reg_value, int &key_status) {
   if (reg_value != key_status){
     //using bit-wise XOR to send modified bits only
-    check_keys(keyboard, reg_value ^ key_status, key_status, group);
+    check_keys(keyboard, reg_value ^ key_status, reg_value, group);
     key_status = reg_value;
   }
 }
