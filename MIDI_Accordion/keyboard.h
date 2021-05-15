@@ -148,6 +148,7 @@ class GenericButton
 class Keyboard
 {
 public:
+  virtual Button* getButton(int grp, int index);
   size_t nameFromSysEx(const byte* data, unsigned size);
   virtual size_t buttonsFromSysEx(const byte* data, unsigned size) = 0;
   virtual void send() = 0;
@@ -164,6 +165,7 @@ public:
   static uint8_t pad;
   static unsigned char temp_bytes[5];
   static bool read_junk;
+  GenericButton keyboard[12][8];
 };
 
 /**
@@ -186,11 +188,10 @@ class RightKeyboard: public Keyboard
     ~RightKeyboard()
     {};
     void clear();
-    Button* getButton(int grp, int index);
+    virtual Button* getButton(int grp, int index);
     virtual size_t buttonsFromSysEx(const byte* data, unsigned size);
     virtual uint8_t type();
     virtual void send();
-    GenericButton keyboard[12][8];
 };
 
 const byte right_keyboard_default[] PROGMEM =
