@@ -31,41 +31,48 @@
 #include "midi.h"
 #include "keyboard.hpp"
 
-char left_hand_pins[] = { 53, 52, 50 };
+/*
+ * We have 81 + 96 = 177 keys. We thus need a 12x16 grid.
+ * We use 12 output pins and 16 (2x8) input pins.
+ * We use pins D38-D49 as output. These pins are shared between left and right
+ * keyboards. We thus output on one pin then read both right and left keyboard
+ * at the same time.
+ * We use PINA (pins D22-D29) for reading right keyboard.
+ * We use PINC (pins D37-D30) for reading left keyboard.
+ */
+
 // array to store up/down status of left keys
+// there is room for 12*8=96 buttons
 int LeftKeysStatus[] = {
   B0000000,
   B0000000,
+  B0000000,
+  B0000000,
+  B0000000,
+  B0000000,
+  B0000000,
+  B0000000,
+  B0000000,
+  B0000000,
+  B0000000,
   B0000000
-};
-//Note: Based on how the opto-interruptors are laid out,
-//You will likely have to remap their pitch numbers (36-59)
-//36-47 are the bass notes, 48-59 are the chord notes
-const char left_notes_midi_numbers[][8] = {
-  {38,39,40,41,50,51,52,53},//53
-  {46,47,36,37,58,59,48,49},//52
-  {42,43,44,45,54,55,56,57} //50
 };
 
-char right_hand_pins[] = { 23, 25, 27, 26, 24, 22 };
 // array to store up/down status of right keys
-int RightKeysStatus[] = {
+// there is room for 12*8=96 buttons
+int right_keys_status[] = {
+  B0000000,
+  B0000000,
+  B0000000,
+  B0000000,
+  B0000000,
+  B0000000,
   B0000000,
   B0000000,
   B0000000,
   B0000000,
   B0000000,
   B0000000
-};
-//Note: Based on how the opto-interruptors are laid out,
-//You will likely have to remap their pitch numbers (53-93)
-const char right_notes_midi_numbers[][8] = {
-  {65,64,62,60,59,57,55,53},//23
-  {79,77,76,74,72,71,69,67},//25
-  {70,68,66,63,61,58,56,54},//27
-  {93,91,89,88,86,84,83,81},//26
-  {90,87,85,82,80,78,75,73},//24
-  {92,0,0,0,0,0,0,0}        //22
 };
 
 RightKeyboard right_keyboard;
@@ -90,23 +97,19 @@ void setup()
   //Disable soft thru so that incoming message are not sent back
   MIDI.turnThruOff();
 
-  //Digital pins start turned off
-  for (int i=0; i<sizeof(left_hand_pins);i++){
-    pinMode(left_hand_pins[i],OUTPUT);
-    digitalWrite(left_hand_pins[i], LOW);
-  }
-  for (int i=0; i<sizeof(right_hand_pins);i++){
-    pinMode(right_hand_pins[i],OUTPUT);
-    digitalWrite(right_hand_pins[i], LOW);
+  //Digital output pins start turned off
+  for (int i=38; i<=49; i++) {
+    pinMode(i,OUTPUT);
+    digitalWrite(i, LOW);
   }
 
+  //Turn on pullup resistor on input pins D22-D37
+  for (int i=22; i<=37; i++) {
+    pinMode(i, INPUT);
+  }
+
+  // Init right keyboard
   apply_default_right_keyboard();
-
-  DDRL = B00000000;  // PortL (42-49) as input (for left hand)
-  PORTL = B11111111; // turn on pullup resistors
-
-  DDRC = B00000000;  // PortC (30-37) as input (for right hand)
-  PORTC = B11111111; // turn on pullup resistors
 
   #ifdef BMP
     init_BMP();
@@ -192,119 +195,43 @@ void loop()
         #endif
       }
     #endif
-  
-    //Alternate between scanning the left and right hand pins
-    //to reduce necessary delay between reads
-    for (int i=0; i<6;i++){
-      scan_pin(right_hand_pins[i], i, RightKeysStatus[i], false);
-      scan_pin(left_hand_pins[i%3], i%3, LeftKeysStatus[i%3], true);
+    
+    for(int pin=38, group=0; pin<=49; pin++, group++){
+      //TODO - I wonder if we can replace this with direct port write for
+      // even better performance?
+      digitalWrite(pin, HIGH);
+      byte right_reg_value = ~PINA;
+      byte left_reg_value = ~PINC;
+      digitalWrite(pin, LOW);
+      digitalWrite(pin+1 == 50 ? 38 : pin+1, HIGH);
+      scan_pins(right_keyboard, group, right_reg_value,
+                right_keys_status[group]);
     }
   }
 }
 
-byte reg_values = 0;
-
-//Read the analog port value for the given pin
-//If something changed, trigger MIDI signal
-void scan_pin(int pin, int index, byte PinStatus, bool left) {
-  //TODO - I wonder if we can replace this with direct port write for even better performance?
-  digitalWrite(pin, HIGH);
-  //A slight delay is needed here or else we'll be reading the previous pin
-  delayMicroseconds(300);//was able to cut this in half by alternating between left and right
-  if (left) {
-    reg_values = ~PINL;
+void scan_pins(Keyboard &keyboard, int group, byte reg_value, int &key_status) {
+  if (reg_value != key_status){
+    //using bit-wise XOR to send modified bits only
+    check_keys(keyboard, reg_value ^ key_status, key_status, group);
+    key_status = reg_value;
   }
-  else {
-    reg_values = ~PINC;
-  }
-  digitalWrite(pin, LOW);
+}
 
-  //check if something changed
-  if (reg_values != PinStatus){
-    //if the byte value is greater, we're turning the note on; else, turning it off.
-    if (reg_values > PinStatus){
-      //using bit-wise OR to send modified bits only
-      check_key(reg_values ^ PinStatus, index, true, left);
-    }
-    else {
-      check_key(reg_values ^ PinStatus, index, false, left);
+//Check to see which bits have changed and trigger corresponding button
+void check_keys(Keyboard &keyboard, byte reg, byte PinStatus, int group){
+  for(int i=0; i<8; i++) {
+    if((reg >> i) & 1) {
+      trigger_button(keyboard, group, i, (PinStatus >> i) & 1);
     }
   }
 }
 
-//Check to see which bits have changed and send the appropriate midi message
-//Instead of iterating the array from 0-7, use binary search to find the modified bits faster
-void check_key(int reg, int group, boolean on, boolean left){
-  // saving 4 iterations, dividing byte by 2
-  if (reg & 0xF0) {
-    for(int i=0; i<4; i++){
-      if ((reg >> 4+i) & 1){
-        note_midi(group, i+4, on, left);
-      }
-    }
-  }
-  else if (reg & 0x0F) {
-    for(int i=0; i<4; i++){
-      if ((reg >> i) & 1){
-        note_midi(group, i, on, left);
-      }
-    }
-  }
-}
-
-void note_midi(int group, int position, boolean on, boolean left){
-  int pitch;
-  int channel = 1;
-  int midi_vel = 127;
-
-  if (left){
-    if (on){
-      LeftKeysStatus[group] |= (1 << position);  //setting bit value
-    }
-    else {
-      LeftKeysStatus[group] &= ~(1 << position);  //setting bit value
-    }
-    pitch = left_notes_midi_numbers[group][position];
-    if(pitch < 48) {
-      midi_vel = 120;//Don't let bass overpower melody
-      channel = 2;
-    }
-    else {
-      midi_vel = 110;//Don't let chords overpower melody
-      channel = 3;
-    }
-  }
-  else{
-    if(on) {
-      RightKeysStatus[group] |= (1 << position);  //setting bit value
-    }
-    else {
-      RightKeysStatus[group] &= ~(1 << position);  //setting bit value
-    }
-    pitch = right_notes_midi_numbers[group][position];
-    channel = 1;
-  }
-
-  if (pitch){
-    #ifdef DEBUG
-      Serial.print("Note ");
-      if(on){
-        Serial.print("on: ");
-      }
-      else {
-        Serial.print("off: ");
-      }
-      Serial.println(pitch);
-    #else
-      if(on) {
-        MIDI.sendNoteOn(pitch, midi_vel, channel);
-      }
-      else {
-        MIDI.sendNoteOff(pitch, midi_vel, channel);
-      }
-    #endif
-  }
-
+void trigger_button(Keyboard &keyboard, int group, int pos, bool on) {
+  if (on)
+    keyboard.getButton(group, pos)->on();
+  else
+    keyboard.getButton(group, pos)->off();
 }
 
 void apply_default_right_keyboard() {
