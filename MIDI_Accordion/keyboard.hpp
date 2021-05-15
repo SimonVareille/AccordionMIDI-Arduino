@@ -30,11 +30,21 @@ uint8_t NullButton::toBytes(byte *buf)
 
 void NoteButton::on()
 {
+  #ifdef DEBUG
+  Serial.print("on: ");
+  Serial.println(pitch)
+  #else
   MIDI.sendNoteOn(pitch, velocity, channel);
+  #endif //DEBUG
 }
 void NoteButton::off()
 {
+  #ifdef DEBUG
+  Serial.print("off: ");
+  Serial.println(pitch)
+  #else
   MIDI.sendNoteOff(pitch, velocity, channel);
+  #endif //DEBUG
 }
 uint8_t NoteButton::toBytes(byte *buf)
 {
@@ -65,7 +75,12 @@ void NoteButton::create(Button *place, const uint8_t channel,
 
 void ProgramButton::on()
 {
+  #ifdef DEBUG
+  Serial.print("program: ");
+  Serial.println(program)
+  #else
   MIDI.sendProgramChange(program, channel);
+  #endif //DEBUG
 }
 void ProgramButton::off()
 {
@@ -97,7 +112,12 @@ void ProgramButton::create(Button *place, const uint8_t channel,
 
 void ControlButton::on()
 {
+  #ifdef DEBUG
+  Serial.print("control: ");
+  Serial.println(control)
+  #else
   MIDI.sendControlChange(control, value, channel);
+  #endif //DEBUG
 }
 void ControlButton::off()
 {
