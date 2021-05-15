@@ -32,7 +32,7 @@ void NoteButton::on()
 {
   #ifdef DEBUG
   Serial.print("on: ");
-  Serial.println(pitch)
+  Serial.println(pitch);
   #else
   MIDI.sendNoteOn(pitch, velocity, channel);
   #endif //DEBUG
@@ -41,7 +41,7 @@ void NoteButton::off()
 {
   #ifdef DEBUG
   Serial.print("off: ");
-  Serial.println(pitch)
+  Serial.println(pitch);
   #else
   MIDI.sendNoteOff(pitch, velocity, channel);
   #endif //DEBUG
@@ -77,7 +77,7 @@ void ProgramButton::on()
 {
   #ifdef DEBUG
   Serial.print("program: ");
-  Serial.println(program)
+  Serial.println(program);
   #else
   MIDI.sendProgramChange(program, channel);
   #endif //DEBUG
@@ -114,7 +114,7 @@ void ControlButton::on()
 {
   #ifdef DEBUG
   Serial.print("control: ");
-  Serial.println(control)
+  Serial.println(control);
   #else
   MIDI.sendControlChange(control, value, channel);
   #endif //DEBUG

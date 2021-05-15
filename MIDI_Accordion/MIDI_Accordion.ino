@@ -141,7 +141,9 @@ bool receivingSysEx = false;
 
 void loop()
 {
+  #ifndef DEBUG
   MIDI.read();
+  #endif //DEBUG
   // When receiving a long SysEx, disabling the main loop so that we don't miss
   // parts of the SysEx
   if(!receivingSysEx) {
